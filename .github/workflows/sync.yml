@@ -13,7 +13,7 @@ jobs:
         uses: actions/checkout@v2
         with:
           fetch-depth: 0  # 获取完整历史记录避免浅克隆问题
-          ref: main
+          ref: master  # 改为 master
 
       - name: Set up Git
         run: |
@@ -27,11 +27,11 @@ jobs:
 
       - name: Merge upstream changes
         run: |
-          git merge upstream/main
+          git merge upstream/master  # 改为 upstream/master
           git checkout --ours .gitignore tvboxtv.txt   # 保留本地版本
           git add .gitignore tvboxtv.txt
           git commit -m "Sync with upstream while keeping .gitignore and tvboxtv.txt unchanged" || echo "No changes to commit"
 
       - name: Push changes
         run: |
-          git push origin main
+          git push origin master  # 改为 master
