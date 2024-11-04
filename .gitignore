@@ -1,2 +1,2 @@
-# 忽略 tvboxtv.txt 文件
-tvboxtv.txt
+tvboxtv.txt merge=ours
+.gitignore merge=ours
