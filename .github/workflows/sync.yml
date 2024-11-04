@@ -12,6 +12,7 @@ jobs:
       - name: Checkout fork repository
         uses: actions/checkout@v2
         with:
+          fetch-depth: 0  # 获取完整历史记录避免浅克隆问题
           ref: main
 
       - name: Set up Git
