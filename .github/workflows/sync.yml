@@ -1,0 +1,36 @@
+name: Sync Fork with Upstream
+
+on:
+  schedule:
+    - cron: '0 0 * * *'  # 每天凌晨 12:00 自动运行
+  workflow_dispatch:      # 也可以手动触发
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout fork repository
+        uses: actions/checkout@v2
+        with:
+          ref: main
+
+      - name: Set up Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Add upstream repository
+        run: |
+          git remote add upstream https://github.com/qist/tvbox.git
+          git fetch upstream
+
+      - name: Merge upstream changes
+        run: |
+          git merge upstream/main
+          git checkout --ours .gitignore tvboxtv.txt   # 保留本地版本
+          git add .gitignore tvboxtv.txt
+          git commit -m "Sync with upstream while keeping .gitignore and tvboxtv.txt unchanged" || echo "No changes to commit"
+
+      - name: Push changes
+        run: |
+          git push origin main
