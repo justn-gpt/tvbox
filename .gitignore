@@ -1,1 +1,2 @@
-tvboxtv.txt merge=ours
+# 忽略 tvboxtv.txt 文件
+tvboxtv.txt
