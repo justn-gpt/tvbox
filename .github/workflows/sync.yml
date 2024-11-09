@@ -25,19 +25,11 @@ jobs:
           git remote add upstream https://github.com/qist/tvbox.git
           git fetch upstream
 
-      - name: Fetch and check for changes
+      - name: Fetch and merge upstream changes
         run: |
           git fetch upstream
-          git diff --quiet HEAD upstream/master || git merge upstream/master
-
-      - name: Merge upstream changes (if any)
-        if: ${{ success() && steps.fetch_and_check_for_changes.outputs.has_changes == 'true' }}
-        run: |
-          git checkout --ours .gitignore tvboxtv.txt   # 保留本地版本
-          git add .gitignore tvboxtv.txt
-          git commit -m "Sync with upstream while keeping .gitignore and tvboxtv.txt unchanged" || echo "No changes to commit"
+          git merge upstream/master --no-edit  # 合并上游更改
 
       - name: Push changes
-        if: ${{ success() && steps.fetch_and_check_for_changes.outputs.has_changes == 'true' }}
         run: |
           git push origin master  # 推送到 master 分支
