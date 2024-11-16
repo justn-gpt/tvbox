@@ -43,7 +43,7 @@ jobs:
     # Step 4: 提交并推送更改
     - name: Commit and Push Changes
       run: |
-        it config user.name "justn-gpt"
+        git config user.name "justn-gpt"
         git config user.email "146205844+justn-gpt@users.noreply.github.com"
 
         git commit -m "Sync with upstream, retain CNAME and workflows" || echo "No changes to commit"
