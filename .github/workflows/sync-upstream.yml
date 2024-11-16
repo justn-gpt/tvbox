@@ -39,15 +39,15 @@ jobs:
         LOCAL_COMMIT=$(git rev-parse HEAD)
         if [ "$UPSTREAM_COMMIT" != "$LOCAL_COMMIT" ]; then
           echo "New changes detected in upstream."
-          echo "::set-output name=has_changes::true"
+          echo "has_changes=true" >> $GITHUB_ENV
         else
           echo "No changes in upstream."
-          echo "::set-output name=has_changes::false"
+          echo "has_changes=false" >> $GITHUB_ENV
         fi
 
     # 5. 合并并同步（如果有更改）
     - name: Merge and Sync
-      if: steps.check_changes.outputs.has_changes == 'true'
+      if: env.has_changes == 'true'
       run: |
         git merge upstream/master --no-commit --no-ff || echo "Nothing to merge."
         git restore --staged CNAME .github/workflows # 排除这些文件的更改
