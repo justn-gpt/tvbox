@@ -36,6 +36,8 @@ jobs:
     - name: Check for Upstream Updates
       id: check-updates
       run: |
+        set -e # 确保脚本遇到未捕获的错误时退出
+
         # 确保获取最新的上游分支信息
         git fetch upstream
 
