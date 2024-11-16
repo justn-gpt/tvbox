@@ -26,7 +26,9 @@ jobs:
     - name: Check for Upstream Updates
       id: check-updates
       run: |
-        git remote remove upstream || true
+        if git remote | grep -q upstream; then
+          git remote remove upstream
+        fi
         git remote add upstream https://github.com/qist/tvbox.git
         git fetch upstream
         # 检查上游是否有更新
