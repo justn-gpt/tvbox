@@ -26,7 +26,7 @@ jobs:
     - name: Check for Upstream Updates
       id: check-updates
       run: |
-        if git remote | grep -q upstream || true; then
+        if git remote get-url upstream &>/dev/null; then
           git remote remove upstream
         fi
         git remote add upstream https://github.com/qist/tvbox.git
