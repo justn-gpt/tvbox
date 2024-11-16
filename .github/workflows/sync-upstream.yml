@@ -16,14 +16,32 @@ jobs:
       with:
         ref: master # 替换为你的默认分支名称（此处为 master）
 
-    # Step 2: 添加上游仓库为远程
-    - name: Add Upstream Repository
+    # Step 2: 配置 Git 用户信息
+    - name: Configure Git User
+      run: |
+        git config user.name "justn-gpt"
+        git config user.email "146205844+justn-gpt@users.noreply.github.com"
+
+    # Step 3: 添加上游仓库为远程并检查更新
+    - name: Check for Upstream Updates
+      id: check-updates
       run: |
         git remote add upstream https://github.com/qist/tvbox.git
         git fetch upstream
+        # 检查上游是否有更新
+        UPSTREAM_HASH=$(git rev-parse upstream/master)
+        BASE_HASH=$(git merge-base upstream/master master)
+        if [ "$UPSTREAM_HASH" = "$BASE_HASH" ]; then
+          echo "No updates from upstream."
+          echo "has_updates=false" >> $GITHUB_ENV
+        else
+          echo "Updates detected from upstream."
+          echo "has_updates=true" >> $GITHUB_ENV
+        fi
 
-    # Step 3: 同步上游代码并保留特定文件
+    # Step 4: 同步上游代码并保留特定文件（仅在有更新时执行）
     - name: Sync from Upstream
+      if: env.has_updates == 'true'
       run: |
         # 备份指定文件
         mkdir -p /tmp/backup
@@ -40,11 +58,9 @@ jobs:
         # 标记文件为已更新
         git add CNAME .github/workflows
 
-    # Step 4: 提交并推送更改
+    # Step 5: 提交并推送更改（仅在有更新时执行）
     - name: Commit and Push Changes
+      if: env.has_updates == 'true'
       run: |
-        git config user.name "justn-gpt"
-        git config user.email "146205844+justn-gpt@users.noreply.github.com"
-
         git commit -m "Sync with upstream, retain CNAME and workflows" || echo "No changes to commit"
         git push origin master
