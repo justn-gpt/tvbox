@@ -18,13 +18,19 @@ jobs:
       with:
         fetch-depth: 0 # 获取所有提交历史以便完整比较
 
-    # 2. 添加上游仓库为远程仓库
+    # 2. 设置 Git 用户信息
+    - name: Configure Git
+      run: |
+        git config --global user.email "146205844+justn-gpt@users.noreply.github.com"
+        git config --global user.name "justn-gpt"
+
+    # 3. 添加上游仓库为远程仓库
     - name: Add upstream repository
       run: |
         git remote add upstream https://github.com/qist/tvbox.git
         git fetch upstream master
 
-    # 3. 检查是否有新提交
+    # 4. 检查是否有新提交
     - name: Check for changes in upstream
       id: check_changes
       run: |
@@ -39,7 +45,7 @@ jobs:
           echo "::set-output name=has_changes::false"
         fi
 
-    # 4. 合并并同步（如果有更改）
+    # 5. 合并并同步（如果有更改）
     - name: Merge and Sync
       if: steps.check_changes.outputs.has_changes == 'true'
       run: |
