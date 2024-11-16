@@ -1,69 +1,52 @@
-name: Sync Upstream Repository
+name: Sync Upstream
 
 on:
   schedule:
-    - cron: '0 0 * * *' # 每天凌晨 0 点运行
-  workflow_dispatch: # 手动触发
+    # 每天凌晨 1 点触发（可根据需要调整时间）
+    - cron: '0 1 * * *'
+
+  workflow_dispatch: # 手动触发工作流的选项
 
 jobs:
   sync:
     runs-on: ubuntu-latest
 
     steps:
-    # Step 1: 检查出目标仓库代码
-    - name: Checkout Target Repository
+    # 1. 检出本地仓库代码
+    - name: Checkout local repository
       uses: actions/checkout@v3
       with:
-        ref: master # 使用默认分支 master
+        fetch-depth: 0 # 获取所有提交历史以便完整比较
 
-    # Step 2: 配置 Git 用户信息
-    - name: Configure Git User
+    # 2. 添加上游仓库为远程仓库
+    - name: Add upstream repository
       run: |
-        git config user.name "justn-gpt"
-        git config user.email "146205844+justn-gpt@users.noreply.github.com"
-
-    # Step 3: 添加上游仓库为远程并检查更新
-    - name: Check for Upstream Updates
-      id: check-updates
-      run: |
-        if git remote get-url upstream &>/dev/null; then
-          git remote remove upstream
-        fi
         git remote add upstream https://github.com/qist/tvbox.git
-        git fetch upstream
-        # 检查上游是否有更新
-        UPSTREAM_HASH=$(git rev-parse upstream/master)
-        BASE_HASH=$(git merge-base upstream/master master)
-        if [ "$UPSTREAM_HASH" = "$BASE_HASH" ]; then
-          echo "No updates from upstream."
-          echo "has_updates=false" >> $GITHUB_ENV
+        git fetch upstream master
+
+    # 3. 检查是否有新提交
+    - name: Check for changes in upstream
+      id: check_changes
+      run: |
+        # 比较上游和本地的最新提交
+        UPSTREAM_COMMIT=$(git rev-parse upstream/master)
+        LOCAL_COMMIT=$(git rev-parse HEAD)
+        if [ "$UPSTREAM_COMMIT" != "$LOCAL_COMMIT" ]; then
+          echo "New changes detected in upstream."
+          echo "::set-output name=has_changes::true"
         else
-          echo "Updates detected from upstream."
-          echo "has_updates=true" >> $GITHUB_ENV
+          echo "No changes in upstream."
+          echo "::set-output name=has_changes::false"
         fi
 
-    # Step 4: 同步上游代码并保留特定文件（仅在有更新时执行）
-    - name: Sync from Upstream
-      if: env.has_updates == 'true'
+    # 4. 合并并同步（如果有更改）
+    - name: Merge and Sync
+      if: steps.check_changes.outputs.has_changes == 'true'
       run: |
-        # 备份指定文件
-        mkdir -p /tmp/backup
-        cp -v CNAME /tmp/backup/CNAME || true
-        cp -rv .github/workflows /tmp/backup/workflows || true
-
-        # 合并上游分支
-        git merge upstream/master --allow-unrelated-histories -X theirs -m "Merge from upstream"
-
-        # 恢复备份的文件
-        cp -v /tmp/backup/CNAME CNAME || true
-        cp -rv /tmp/backup/workflows .github/workflows || true
-
-        # 标记文件为已更新
-        git add CNAME .github/workflows
-
-    # Step 5: 提交并推送更改（仅在有更新时执行）
-    - name: Commit and Push Changes
-      if: env.has_updates == 'true'
-      run: |
-        git commit -m "Sync with upstream, retain CNAME and workflows" || echo "No changes to commit"
-        git push origin master
+        git merge upstream/master --no-commit --no-ff
+        git restore --staged CNAME .github/workflows # 排除这些文件的更改
+        git checkout CNAME .github/workflows       # 恢复本地版本
+        git commit -m "Sync with upstream excluding CNAME and workflows"
+        git push origin main
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
