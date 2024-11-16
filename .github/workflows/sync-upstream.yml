@@ -14,48 +14,24 @@ jobs:
     - name: Checkout Target Repository
       uses: actions/checkout@v3
       with:
-        ref: master # 替换为你的默认分支名称（此处为 master）
+        ref: master # 使用默认分支 master
 
     # Step 2: 配置 Git 用户信息
     - name: Configure Git User
       run: |
         git config user.name "justn-gpt"
         git config user.email "146205844+justn-gpt@users.noreply.github.com"
-        echo "Configured Git user information."
 
-    # Step 3: 添加上游仓库为远程（避免重复添加）
-    - name: Add Upstream Repository
-      run: |
-        if git remote | grep -q '^upstream$'; then
-          echo "Upstream remote already exists."
-        else
-          git remote add upstream https://github.com/qist/tvbox.git
-        fi
-        git fetch upstream || { echo "Failed to fetch upstream repository"; exit 1; }
-        echo "Fetched upstream repository successfully."
-
-    # Step 4: 检查上游分支是否有更新
+    # Step 3: 添加上游仓库为远程并检查更新
     - name: Check for Upstream Updates
       id: check-updates
       run: |
-        set -euxo pipefail # 开启严格模式，方便调试
-
-        echo "Checking if upstream master branch exists..."
-        if git ls-remote --exit-code --heads upstream master; then
-          echo "Upstream master branch exists."
-        else
-          echo "Upstream master branch does not exist. Exiting."
-          echo "has_updates=false" >> $GITHUB_ENV
-          exit 0
-        fi
-
-        echo "Fetching hashes to compare..."
-        UPSTREAM_HASH=$(git rev-parse upstream/master || { echo "Failed to get upstream hash"; exit 1; })
-        BASE_HASH=$(git merge-base upstream/master master || { echo "Failed to get base hash"; exit 1; })
-
-        echo "Debug: UPSTREAM_HASH=$UPSTREAM_HASH"
-        echo "Debug: BASE_HASH=$BASE_HASH"
-
+        git remote remove upstream || true
+        git remote add upstream https://github.com/qist/tvbox.git
+        git fetch upstream
+        # 检查上游是否有更新
+        UPSTREAM_HASH=$(git rev-parse upstream/master)
+        BASE_HASH=$(git merge-base upstream/master master)
         if [ "$UPSTREAM_HASH" = "$BASE_HASH" ]; then
           echo "No updates from upstream."
           echo "has_updates=false" >> $GITHUB_ENV
@@ -64,37 +40,28 @@ jobs:
           echo "has_updates=true" >> $GITHUB_ENV
         fi
 
-    # Step 5: 同步上游代码并保留特定文件（仅在有更新时执行）
+    # Step 4: 同步上游代码并保留特定文件（仅在有更新时执行）
     - name: Sync from Upstream
       if: env.has_updates == 'true'
       run: |
-        echo "Preparing to sync from upstream..."
-        
         # 备份指定文件
         mkdir -p /tmp/backup
-        cp CNAME /tmp/backup/CNAME || { echo "No CNAME file found. Skipping backup."; }
-        cp -r .github/workflows /tmp/backup/workflows || { echo "No workflows found. Skipping backup."; }
-
-        echo "Backup completed. Starting merge process..."
+        cp -v CNAME /tmp/backup/CNAME || true
+        cp -rv .github/workflows /tmp/backup/workflows || true
 
         # 合并上游分支
-        git merge upstream/master --allow-unrelated-histories -X theirs -m "Merge from upstream" || { echo "Merge failed. Exiting."; exit 1; }
-
-        echo "Merge completed. Restoring backup files..."
+        git merge upstream/master --allow-unrelated-histories -X theirs -m "Merge from upstream"
 
         # 恢复备份的文件
-        cp /tmp/backup/CNAME CNAME || echo "No CNAME file to restore."
-        cp -r /tmp/backup/workflows .github/workflows || echo "No workflows to restore."
+        cp -v /tmp/backup/CNAME CNAME || true
+        cp -rv /tmp/backup/workflows .github/workflows || true
 
         # 标记文件为已更新
-        git add CNAME .github/workflows || echo "No files to add."
-        echo "Sync process completed."
+        git add CNAME .github/workflows
 
-    # Step 6: 提交并推送更改（仅在有更新时执行）
+    # Step 5: 提交并推送更改（仅在有更新时执行）
     - name: Commit and Push Changes
       if: env.has_updates == 'true'
       run: |
-        echo "Preparing to commit and push changes..."
-        git commit -m "Sync with upstream, retain CNAME and workflows" || { echo "No changes to commit."; exit 0; }
-        git push origin master || { echo "Failed to push changes to the repository."; exit 1; }
-        echo "Push completed successfully."
+        git commit -m "Sync with upstream, retain CNAME and workflows" || echo "No changes to commit"
+        git push origin master
