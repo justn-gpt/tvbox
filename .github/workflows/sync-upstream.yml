@@ -49,10 +49,14 @@ jobs:
     - name: Merge and Sync
       if: steps.check_changes.outputs.has_changes == 'true'
       run: |
-        git merge upstream/master --no-commit --no-ff
+        git merge upstream/master --no-commit --no-ff || echo "Nothing to merge."
         git restore --staged CNAME .github/workflows # 排除这些文件的更改
         git checkout CNAME .github/workflows       # 恢复本地版本
-        git commit -m "Sync with upstream excluding CNAME and workflows"
-        git push origin main
+        if git diff-index --quiet HEAD; then
+          echo "No changes to commit."
+        else
+          git commit -m "Sync with upstream excluding CNAME and workflows"
+          git push origin main
+        fi
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
