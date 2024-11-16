@@ -10,25 +10,28 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    # Step 1: 检查出目标仓库代码
     - name: Checkout Target Repository
       uses: actions/checkout@v3
       with:
         ref: master # 替换为你的默认分支名称（此处为 master）
 
-    # Step 2: 配置 Git 用户信息
     - name: Configure Git User
       run: |
         git config user.name "justn-gpt"
         git config user.email "146205844+justn-gpt@users.noreply.github.com"
 
-    # Step 3: 添加上游仓库为远程并检查更新
+    - name: Add Upstream Repository
+      run: |
+        if git remote | grep -q '^upstream$'; then
+          echo "Upstream remote already exists."
+        else
+          git remote add upstream https://github.com/qist/tvbox.git
+        fi
+        git fetch upstream
+
     - name: Check for Upstream Updates
       id: check-updates
       run: |
-        git remote add upstream https://github.com/qist/tvbox.git
-        git fetch upstream
-        # 检查上游是否有更新
         UPSTREAM_HASH=$(git rev-parse upstream/master)
         BASE_HASH=$(git merge-base upstream/master master)
         if [ "$UPSTREAM_HASH" = "$BASE_HASH" ]; then
@@ -39,26 +42,17 @@ jobs:
           echo "has_updates=true" >> $GITHUB_ENV
         fi
 
-    # Step 4: 同步上游代码并保留特定文件（仅在有更新时执行）
     - name: Sync from Upstream
       if: env.has_updates == 'true'
       run: |
-        # 备份指定文件
         mkdir -p /tmp/backup
         cp CNAME /tmp/backup/CNAME || true
         cp -r .github/workflows /tmp/backup/workflows || true
-
-        # 合并上游分支
         git merge upstream/master --allow-unrelated-histories -X theirs -m "Merge from upstream"
-
-        # 恢复备份的文件
         cp /tmp/backup/CNAME CNAME || true
         cp -r /tmp/backup/workflows .github/workflows || true
-
-        # 标记文件为已更新
         git add CNAME .github/workflows
 
-    # Step 5: 提交并推送更改（仅在有更新时执行）
     - name: Commit and Push Changes
       if: env.has_updates == 'true'
       run: |
