@@ -46,7 +46,8 @@ jobs:
 
     # 5. 检测当前分支名称
     - name: Detect branch name
-      run: echo "BRANCH_NAME=$(git branch --show-current)" >> $GITHUB_ENV
+      run: |
+        echo "BRANCH_NAME=$(git branch --show-current)" >> $GITHUB_ENV
 
     # 6. 合并并同步（如果有更改）
     - name: Merge and Sync
@@ -68,3 +69,10 @@ jobs:
           echo "No changes to commit."
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    # 7. 调试：查看状态
+    - name: Debug state
+      run: |
+        echo "Current branch: $BRANCH_NAME"
+        echo "Changes after merge:"
+        git diff --name-status || echo "No changes detected."
