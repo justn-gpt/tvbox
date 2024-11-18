@@ -43,20 +43,28 @@ jobs:
         else
           echo "No changes in upstream."
           echo "has_changes=false" >> $GITHUB_ENV
-        fi
 
-    # 5. 合并并同步（如果有更改）
+    # 5. 检测当前分支名称
+    - name: Detect branch name
+      run: echo "BRANCH_NAME=$(git branch --show-current)" >> $GITHUB_ENV
+
+    # 6. 合并并同步（如果有更改）
     - name: Merge and Sync
       if: env.has_changes == 'true'
       run: |
+        # 合并上游代码
         git merge upstream/master --no-commit --no-ff || echo "Nothing to merge."
-        git restore --staged CNAME .github/workflows # 排除这些文件的更改
-        git checkout CNAME .github/workflows       # 恢复本地版本
-        if git diff-index --quiet HEAD; then
-          echo "No changes to commit."
-        else
+
+        # 检查是否有变更需要提交
+        if ! git diff-index --quiet HEAD; then
+          # 排除特定文件的更改
+          git restore --staged CNAME .github/workflows || true
+          git checkout CNAME .github/workflows || true
+
+          # 提交更改并推送到远程仓库
           git commit -m "Sync with upstream excluding CNAME and workflows"
-          git push origin main
-        fi
+          git push origin $BRANCH_NAME
+        else
+          echo "No changes to commit."
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
