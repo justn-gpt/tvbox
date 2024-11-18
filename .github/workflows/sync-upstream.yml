@@ -1,80 +1,35 @@
-name: Sync Upstream
+name: Sync Fork with Upstream
 
 on:
   schedule:
-    # 每天凌晨 1 点触发（可根据需要调整时间）
-    - cron: '0 1 * * *'
-
-  workflow_dispatch: # 手动触发工作流的选项
+    - cron: '0 0 * * *'  # 每天凌晨 12:00 自动运行
+  workflow_dispatch:      # 也可以手动触发
 
 jobs:
   sync:
     runs-on: ubuntu-latest
-
     steps:
-    # 1. 检出本地仓库代码
-    - name: Checkout local repository
-      uses: actions/checkout@v3
-      with:
-        fetch-depth: 0 # 获取所有提交历史以便完整比较
+      - name: Checkout fork repository
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0  # 获取完整历史记录避免浅克隆问题
+          ref: master  # 使用 master 分支
 
-    # 2. 设置 Git 用户信息
-    - name: Configure Git
-      run: |
-        git config --global user.email "146205844+justn-gpt@users.noreply.github.com"
-        git config --global user.name "justn-gpt"
+      - name: Set up Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
 
-    # 3. 添加上游仓库为远程仓库
-    - name: Add upstream repository
-      run: |
-        git remote add upstream https://github.com/qist/tvbox.git
-        git fetch upstream master
+      - name: Add upstream repository
+        run: |
+          git remote add upstream https://github.com/qist/tvbox.git
+          git fetch upstream
 
-    # 4. 检查是否有新提交
-    - name: Check for changes in upstream
-      id: check_changes
-      run: |
-        # 比较上游和本地的最新提交
-        UPSTREAM_COMMIT=$(git rev-parse upstream/master)
-        LOCAL_COMMIT=$(git rev-parse HEAD)
-        if [ "$UPSTREAM_COMMIT" != "$LOCAL_COMMIT" ]; then
-          echo "New changes detected in upstream."
-          echo "has_changes=true" >> $GITHUB_ENV
-        else
-          echo "No changes in upstream."
-          echo "has_changes=false" >> $GITHUB_ENV
+      - name: Fetch and merge upstream changes
+        run: |
+          git fetch upstream
+          git merge upstream/master --no-edit  # 合并上游更改
 
-    # 5. 检测当前分支名称
-    - name: Detect branch name
-      run: |
-        BRANCH_NAME=$(git branch --show-current)
-        echo "BRANCH_NAME=$BRANCH_NAME" >> $GITHUB_ENV
-
-    # 6. 合并并同步（如果有更改）
-    - name: Merge and Sync
-      if: env.has_changes == 'true'
-      run: |
-        # 合并上游代码
-        git merge upstream/master --no-commit --no-ff || echo "Nothing to merge."
-
-        # 检查是否有变更需要提交
-        if ! git diff-index --quiet HEAD; then
-          # 排除特定文件的更改
-          git restore --staged CNAME .github/workflows || true
-          git checkout CNAME .github/workflows || true
-
-          # 提交更改并推送到远程仓库
-          git commit -m "Sync with upstream excluding CNAME and workflows"
-          git push origin $BRANCH_NAME
-        else
-          echo "No changes to commit."
-        fi
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-    # 7. 调试：查看状态
-    - name: Debug state
-      run: |
-        echo "Current branch: $BRANCH_NAME"
-        echo "Changes after merge:"
-        git diff --name-status || echo "No changes detected."
+      - name: Push changes
+        run: |
+          git push origin master  # 推送到 master 分支
