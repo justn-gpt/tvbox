@@ -2,7 +2,7 @@ name: Sync Fork with Upstream
 
 on:
   schedule:
-    - cron: '0 15 * * *'  # 每天下午 15:00 自动运行
+    - cron: '0 23 * * *'  # 每天下午 23:00 自动运行
   workflow_dispatch:      # 也可以手动触发
 
 jobs:
